@@ -1,4 +1,4 @@
-                      THE SIMPLEDB DATABASE SYSTEM
+                      [THE SIMPLEDB DATABASE SYSTEM](http://www.cs.bc.edu/~sciore/simpledb/)
                   General Information and Instructions
 
 
