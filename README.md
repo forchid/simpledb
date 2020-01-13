@@ -1,14 +1,14 @@
-[THE SIMPLEDB DATABASE SYSTEM](http://www.cs.bc.edu/~sciore/simpledb/)
+# [THE SIMPLEDB DATABASE SYSTEM](http://www.cs.bc.edu/~sciore/simpledb/)
 General Information and Instructions
 
 
 This document contains the following sections:
-    * Release Notes
-    * Server Installation
-    * Running the Server
-    * Running Client Programs
-    * SimpleDB Limitations
-    * The Organization of the Server Code
+* Release Notes
+* Server Installation
+* Running the Server
+* Running Client Programs
+* SimpleDB Limitations
+* The Organization of the Server Code
 
 
 I. Release Notes:
