@@ -1,5 +1,5 @@
-                      [THE SIMPLEDB DATABASE SYSTEM](http://www.cs.bc.edu/~sciore/simpledb/)
-                  General Information and Instructions
+[THE SIMPLEDB DATABASE SYSTEM](http://www.cs.bc.edu/~sciore/simpledb/)
+General Information and Instructions
 
 
 This document contains the following sections:
@@ -36,7 +36,7 @@ I. Release Notes:
 
 II. Installation Instructions:
 
-  1)  Install the Java SDK.
+  1)  Install the Java SDK(1.8+).
 
   2) To install the SimpleDB engine, you must add the simpledb folder to 
      your classpath. To do so using Eclipse, first create a new project; 
@@ -175,7 +175,6 @@ V. SimpleDB Limitations
   SimpleDB implements only the following JDBC methods:
 
    Driver
-
       public Connection connect(String url, Properties prop);
       // The method ignores the contents of variable prop.
 
