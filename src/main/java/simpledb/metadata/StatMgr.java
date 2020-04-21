@@ -48,8 +48,8 @@ class StatMgr {
    }
    
    private synchronized void refreshStatistics(Transaction tx) {
-      tablestats = new HashMap<String,StatInfo>();
-      numcalls = 0;
+      this.tablestats = new HashMap<>();
+      this.numcalls = 0;
       Layout tcatlayout = tblMgr.getLayout("tblcat", tx);
       TableScan tcat = new TableScan(tx, "tblcat", tcatlayout);
       while(tcat.next()) {

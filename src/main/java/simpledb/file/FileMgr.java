@@ -1,48 +1,67 @@
 package simpledb.file;
 
+import simpledb.DbException;
+import simpledb.util.IoUtils;
+
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.*;
 
 /**
  * The SimpleDB file manager.
  * The database system stores its data as files within a specified directory.
- * The file manager provides methods for reading the contents of
- * a file block to a Java byte buffer,
- * writing the contents of a byte buffer to a file block,
- * and appending the contents of a byte buffer to the end of a file.
+ *
+ * The file manager provides methods:
+ * 1) reading the contents of a file block to a java byte buffer;
+ * 2) writing the contents of a byte buffer to a file block;
+ * 3) and appending the contents of a byte buffer to the end of a file.
+ *
  * The class also contains public methods to indicate whether the
  * file is new, to give the number of blocks in the file, and
  * to give the number of bytes in each block.
+ *
  * @author Edward Sciore
  */
 public class FileMgr {
-   private File dbDirectory;
-   private int blocksize;
-   private boolean isNew;
-   private Map<String,RandomAccessFile> openFiles = new HashMap<>();
+
+   private final Map<String, RandomAccessFile> openFiles = new HashMap<>();
+
+   private final File dbDir;
+   private final int blockSize;
+   private final boolean isNew;
 
    /**
     * Creates a file manager for the specified database.
     * The database will be stored in a folder of that name
-    * in the specified directory. If the folder does not exist,
-    * then a folder containing an empty database is created 
-    * automatically. Files for all temporary tables 
+    * in the specified directory. Files for all temporary tables
     * (i.e. tables beginning with "temp") are deleted.
-    * @param dbname the name of the directory that holds the database
+    *
+    * @param dbDir the the directory that holds the database
+    * @param blockSize the block size of buffer
+    * @param isNew this db new or not
+    *
+    * @throws DbException if access db dir or delete temp files error
     */
-   public FileMgr(File dbDirectory, int blocksize) {
-      this.dbDirectory = dbDirectory;
-      this.blocksize = blocksize;
-      isNew = !dbDirectory.exists();
+   public FileMgr(File dbDir, int blockSize, boolean isNew) throws DbException {
+      this.dbDir = dbDir;
+      this.blockSize = blockSize;
+      this.isNew = isNew;
 
-      // create the directory if the database is new
-      if (isNew)
-         dbDirectory.mkdirs();
-
-      // remove any leftover temporary tables
-      for (String filename : dbDirectory.list())
-         if (filename.startsWith("temp"))
-         		new File(dbDirectory, filename).delete();
+      // Remove any leftover temporary tables
+      String[] files = this.dbDir.list();
+      if (files == null) {
+         throw new DbException("Access db dir failed: " + this.dbDir);
+      }
+      for (String filename : files) {
+         if (!filename.startsWith("temp")) {
+            continue;
+         }
+         File file = new File(this.dbDir, filename);
+         if (!file.delete()) {
+            throw new DbException("Can't delete temp file: " + file);
+         }
+      }
    }
 
    /**
@@ -50,14 +69,24 @@ public class FileMgr {
     * @param blk a reference to a disk block
     * @param p  the page
     */
-   public synchronized void read(BlockId blk, Page p) {
+   public void read(BlockId blk, Page p) throws DbException {
       try {
-         RandomAccessFile f = getFile(blk.fileName());
-         f.seek(blk.number() * blocksize);
-         f.getChannel().read(p.contents());
+         RandomAccessFile raf = getFile(blk.fileName());
+         synchronized (raf) {
+            raf.seek(blk.number() * this.blockSize);
+            FileChannel ch = raf.getChannel();
+            ByteBuffer buffer = p.contents();
+
+            while (buffer.hasRemaining()) {
+               int n = ch.read(buffer);
+               if (n == -1) {
+                  break;
+               }
+            }
+         }
       }
       catch (IOException e) {
-         throw new RuntimeException("cannot read block " + blk);
+         throw new DbException("Cannot read block " + blk, e);
       }
    }
 
@@ -66,14 +95,21 @@ public class FileMgr {
     * @param blk a reference to a disk block
     * @param p  the page
     */
-   public synchronized void write(BlockId blk, Page p) {
+   public void write(BlockId blk, Page p) throws DbException {
       try {
-         RandomAccessFile f = getFile(blk.fileName());
-         f.seek(blk.number() * blocksize);
-         f.getChannel().write(p.contents());
+         RandomAccessFile raf = getFile(blk.fileName());
+         synchronized (raf) {
+            raf.seek(blk.number() * this.blockSize);
+            FileChannel ch = raf.getChannel();
+            ByteBuffer buffer = p.contents();
+
+            while (buffer.hasRemaining()) {
+               ch.write(buffer);
+            }
+         }
       }
       catch (IOException e) {
-         throw new RuntimeException("cannot write block" + blk);
+         throw new DbException("Cannot write block" + blk, e);
       }
    }
 
@@ -82,17 +118,20 @@ public class FileMgr {
     * @param filename the name of the file
     * @return a reference to the newly-created block.
     */
-   public synchronized BlockId append(String filename) {
-      int newblknum = length(filename);
-      BlockId blk = new BlockId(filename, newblknum);
-      byte[] b = new byte[blocksize];
+   public BlockId append(String filename) {
+      int newBlkNum = length(filename);
+      BlockId blk = new BlockId(filename, newBlkNum);
+      byte[] b = new byte[this.blockSize];
+
       try {
-         RandomAccessFile f = getFile(blk.fileName());
-         f.seek(blk.number() * blocksize);
-         f.write(b);
+         RandomAccessFile raf = getFile(blk.fileName());
+         synchronized (raf) {
+            raf.seek(blk.number() * this.blockSize);
+            raf.write(b);
+         }
       }
       catch (IOException e) {
-         throw new RuntimeException("cannot append block" + blk);
+         throw new DbException("Cannot append block " + blk, e);
       }
 
       return blk;
@@ -103,13 +142,15 @@ public class FileMgr {
     * @param filename the name of the file
     * @return the number of blocks in the file
     */
-   public synchronized int length(String filename) {
+   public int length(String filename) {
       try {
-         RandomAccessFile f = getFile(filename);
-         return (int)(f.length() / blocksize);
+         RandomAccessFile raf = getFile(filename);
+         synchronized (raf) {
+            return (int) (raf.length() / this.blockSize);
+         }
       }
       catch (IOException e) {
-         throw new RuntimeException("cannot access " + filename);
+         throw new DbException("Cannot access file '" + filename + "'");
       }
    }
 
@@ -123,7 +164,7 @@ public class FileMgr {
    }
    
    public int blockSize() {
-      return blocksize;
+      return this.blockSize;
    }
 
    /**
@@ -135,13 +176,28 @@ public class FileMgr {
     * @return the associated open file.
     * @throws IOException
     */
-   private RandomAccessFile getFile(String filename) throws IOException {
-      RandomAccessFile f = openFiles.get(filename);
-      if (f == null) {
-         File dbTable = new File(dbDirectory, filename);
-         f = new RandomAccessFile(dbTable, "rws");
-         openFiles.put(filename, f);
+   private synchronized RandomAccessFile getFile(String filename) throws IOException {
+      RandomAccessFile raf = this.openFiles.get(filename);
+
+      if (raf == null) {
+         File dbTable = new File(this.dbDir, filename);
+         raf = new RandomAccessFile(dbTable, "rws");
+         boolean failed = true;
+         try {
+            this.openFiles.put(filename, raf);
+            failed = false;
+         } finally {
+            if (failed) {
+               IoUtils.close(raf);
+            }
+         }
       }
-      return f;
+
+      return raf;
    }
+
+    public File getDbDir() {
+      return this.dbDir;
+    }
+
 }

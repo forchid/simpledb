@@ -11,6 +11,7 @@ import simpledb.file.*;
  * @author Edward Sciore
  */
 public class LogMgr {
+
    private FileMgr fm;
    private String logfile;
    private Page logpage;
@@ -22,7 +23,7 @@ public class LogMgr {
     * Creates the manager for the specified log file.
     * If the log file does not yet exist, it is created
     * with an empty first block.
-    * @param FileMgr the file manager
+    * @param fm the file manager
     * @param logfile the name of the log file
     */
    public LogMgr(FileMgr fm, String logfile) {
@@ -30,11 +31,11 @@ public class LogMgr {
       this.logfile = logfile;
       byte[] b = new byte[fm.blockSize()];
       logpage = new Page(b);
-      int logsize = fm.length(logfile);
-      if (logsize == 0)
+      int logSize = fm.length(logfile);
+      if (logSize == 0) {
          currentblk = appendNewBlock();
-      else {
-         currentblk = new BlockId(logfile, logsize-1);
+      } else {
+         currentblk = new BlockId(logfile, logSize - 1);
          fm.read(currentblk, logpage);
       }
    }

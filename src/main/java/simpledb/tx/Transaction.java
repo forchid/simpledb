@@ -3,6 +3,7 @@ package simpledb.tx;
 import simpledb.file.*;
 import simpledb.log.LogMgr;
 import simpledb.buffer.*;
+import simpledb.server.SimpleDB;
 import simpledb.tx.recovery.*;
 import simpledb.tx.concurrency.ConcurrencyMgr;
 
@@ -13,8 +14,12 @@ import simpledb.tx.concurrency.ConcurrencyMgr;
  * @author Edward Sciore
  */
 public class Transaction {
+
    private static int nextTxNum = 0;
    private static final int END_OF_FILE = -1;
+
+   final SimpleDB db;
+
    private RecoveryMgr    recoveryMgr;
    private ConcurrencyMgr concurMgr;
    private BufferMgr bm;
@@ -29,18 +34,15 @@ public class Transaction {
     * managers that it gets from the class
     * {@link simpledb.server.SimpleDB}.
     * Those objects are created during system initialization.
-    * Thus this constructor cannot be called until either
-    * {@link simpledb.server.SimpleDB#init(String)} or 
-    * {@link simpledb.server.SimpleDB#initFileLogAndBufferMgr(String)} or
-    * is called first.
     */
-   public Transaction(FileMgr fm, LogMgr lm, BufferMgr bm) {
+   public Transaction(SimpleDB db, FileMgr fm, LogMgr lm, BufferMgr bm) {
+      this.db = db;
       this.fm = fm;
       this.bm = bm;
-      txnum       = nextTxNumber();
-      recoveryMgr = new RecoveryMgr(this, txnum, lm, bm);
-      concurMgr   = new ConcurrencyMgr();
-      mybuffers = new BufferList(bm);
+      this.txnum = nextTxNumber();
+      this.recoveryMgr = new RecoveryMgr(this, txnum, lm, bm);
+      this.concurMgr   = new ConcurrencyMgr();
+      this.mybuffers = new BufferList(bm);
    }
    
    /**
@@ -50,10 +52,10 @@ public class Transaction {
     * release all locks, and unpin any pinned buffers.
     */
    public void commit() {
-      recoveryMgr.commit();
-      System.out.println("transaction " + txnum + " committed");
-      concurMgr.release();
-      mybuffers.unpinAll();
+      this.recoveryMgr.commit();
+      this.db.debug("tx#%d committed", this.txnum);
+      this.concurMgr.release();
+      this.mybuffers.unpinAll();
    }
    
    /**

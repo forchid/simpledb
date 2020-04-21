@@ -1,22 +1,29 @@
 package simpledb.server;
 
 import java.rmi.registry.*;
-
 import simpledb.jdbc.network.*;
 
 public class StartServer {
+
+   static final String NAME = System.getProperty("simpledb.server.name", "simpledb");
+   static final int PORT = Integer.getInteger("simpledb.server.port", 1099);
+
    public static void main(String args[]) throws Exception {
-      // configure and initialize the database
-      String dirname = (args.length == 0) ? "studentdb" : args[0];
+      String dirname = "data";
+
+      // Configure and initialize the database
+      if (args.length > 0) {
+         dirname = args[0];
+      }
       SimpleDB db = new SimpleDB(dirname);
       
-      // create a registry specific for the server on the default port
-      Registry reg = LocateRegistry.createRegistry(1099);
-      
-      // and post the server entry in it
+      // Create a registry specific for the server on the default port
+      Registry reg = LocateRegistry.createRegistry(PORT);
+      // And post the server entry in it
       RemoteDriver d = new RemoteDriverImpl(db);
-      reg.rebind("simpledb", d);
-      
-      System.out.println("database server ready");
+      reg.rebind(NAME, d);
+
+      db.info("Database server listen on 'rmi://localhost:%d/%s'", PORT, NAME);
    }
+
 }

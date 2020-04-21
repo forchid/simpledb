@@ -6,13 +6,14 @@ import simpledb.log.LogMgr;
 import simpledb.server.SimpleDB;
 
 public class ConcurrencyTest {
+   static SimpleDB db;
    private static FileMgr fm;
    private static LogMgr lm;
    private static BufferMgr bm;
 
    public static void main(String[] args) {
       //initialize the database system
-      SimpleDB db = new SimpleDB("concurrencytest", 400, 8); 
+      db = new SimpleDB("concurrencytest", 400, 8);
       fm = db.fileMgr();
       lm = db.logMgr();
       bm = db.bufferMgr();
@@ -24,7 +25,7 @@ public class ConcurrencyTest {
    static class A implements Runnable { 
       public void run() {
          try {
-            Transaction txA = new Transaction(fm, lm, bm);
+            Transaction txA = new Transaction(db, fm, lm, bm);
             BlockId blk1 = new BlockId("testfile", 1);
             BlockId blk2 = new BlockId("testfile", 2);
             txA.pin(blk1);
@@ -45,7 +46,7 @@ public class ConcurrencyTest {
    static class B implements Runnable {
       public void run() {
          try {
-            Transaction txB = new Transaction(fm, lm, bm);
+            Transaction txB = new Transaction(db, fm, lm, bm);
             BlockId blk1 = new BlockId("testfile", 1);
             BlockId blk2 = new BlockId("testfile", 2);
             txB.pin(blk1);
@@ -66,7 +67,7 @@ public class ConcurrencyTest {
    static class C implements Runnable {
       public void run() {
          try {
-            Transaction txC = new Transaction(fm, lm, bm);
+            Transaction txC = new Transaction(db, fm, lm, bm);
             BlockId blk1 = new BlockId("testfile", 1);
             BlockId blk2 = new BlockId("testfile", 2);
             txC.pin(blk1);

@@ -124,10 +124,11 @@ public class RecordPage {
    }
 
    private boolean isValidSlot(int slot) {
-      return offset(slot+1) <= tx.blockSize();
+      return offset(slot + 1) <= tx.blockSize();
    }
 
    private int offset(int slot) {
-      return slot * layout.recordLength();
+      return slot * this.layout.recordLength();
    }
+
 }
